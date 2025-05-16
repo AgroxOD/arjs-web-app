@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AR.js Web App - Selectable Models with Controls</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+      .control-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 999;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 5px 10px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .control-panel label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin: 0;
+      }
+      .control-panel select,
+      .control-panel input[type="range"],
+      .control-panel input[type="number"] {
+        height: 20px;
+      }
+      .control-panel input[type="number"] {
+        width: 50px;
+      }
+      .control-panel button {
+        padding: 5px;
+        font-size: 16px;
+        border-radius: 50%;
+        border: none;
+        background-color: #ddd;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="control-panel">
+      <label>Модель:
+        <select id="modelSelector">
+          <option value="homer.glb">Homer</option>
+          <option value="model2.glb">Model 2</option>
+          <option value="model3.glb">Model 3</option>
+        </select>
+      </label>
+
+      <label>Масштаб:
+        <input type="range" id="scaleSlider" min="0.1" max="5" step="0.1" value="0.5">
+        <input type="number" id="scaleInput" min="0.1" max="5" step="0.1" value="0.5">
+      </label>
+
+      <label>Поворот X:
+        <input type="range" id="rotationXSlider" min="-180" max="180" step="5" value="-90">
+        <input type="number" id="rotationXInput" min="-180" max="180" step="5" value="-90">
+      </label>
+
+      <label>Y:
+        <input type="range" id="rotationYSlider" min="0" max="360" step="5" value="180">
+        <input type="number" id="rotationYInput" min="0" max="360" step="5" value="180">
+      </label>
+
+      <label>Z (позиция):
+        <input type="range" id="positionZSlider" min="-5" max="5" step="0.1" value="0">
+        <input type="number" id="positionZInput" min="-5" max="5" step="0.1" value="0">
+      </label>
+
+      <button id="resetButton" title="Сбросить параметры">&#x21bb;</button>
+    </div>
+
+    <a-scene embedded arjs>
+      <a-assets>
+        <a-asset-item id="homerModel" src="homer.glb"></a-asset-item>
+        <a-asset-item id="model2" src="model2.glb"></a-asset-item>
+        <a-asset-item id="model3" src="model3.glb"></a-asset-item>
+      </a-assets>
+
+      <a-marker preset="hiro">
+        <a-entity id="arModel"
+                  gltf-model="homer.glb"
+                  scale="0.5 0.5 0.5"
+                  position="0 0 0"
+                  rotation="-90 0 0">
+        </a-entity>
+      </a-marker>
+
+      <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+      const selector = document.getElementById('modelSelector');
+      const scaleSlider = document.getElementById('scaleSlider');
+      const scaleInput = document.getElementById('scaleInput');
+      const rotationXSlider = document.getElementById('rotationXSlider');
+      const rotationYSlider = document.getElementById('rotationYSlider');
+      const rotationXInput = document.getElementById('rotationXInput');
+      const rotationYInput = document.getElementById('rotationYInput');
+      const positionZSlider = document.getElementById('positionZSlider');
+      const positionZInput = document.getElementById('positionZInput');
+      const resetButton = document.getElementById('resetButton');
+      const arModel = document.getElementById('arModel');
+
+      selector.addEventListener('change', async (e) => {
+        await arModel.setAttribute('gltf-model', e.target.value);
+      });
+
+      const updateScale = async (val) => {
+        scaleSlider.value = val;
+        scaleInput.value = val;
+        await arModel.setAttribute('scale', `${val} ${val} ${val}`);
+      };
+
+      scaleSlider.addEventListener('input', (e) => updateScale(e.target.value));
+      scaleInput.addEventListener('input', (e) => updateScale(e.target.value));
+
+      const updateRotation = async () => {
+        const xRot = rotationXSlider.value;
+        const yRot = rotationYSlider.value;
+        rotationXInput.value = xRot;
+        rotationYInput.value = yRot;
+        await arModel.setAttribute('rotation', `${xRot} ${yRot} 0`);
+      };
+
+      rotationXSlider.addEventListener('input', updateRotation);
+      rotationYSlider.addEventListener('input', updateRotation);
+      rotationXInput.addEventListener('input', (e) => { rotationXSlider.value = e.target.value; updateRotation(); });
+      rotationYInput.addEventListener('input', (e) => { rotationYSlider.value = e.target.value; updateRotation(); });
+
+      const updatePositionZ = async (val) => {
+        positionZSlider.value = val;
+        positionZInput.value = val;
+        const position = arModel.getAttribute('position');
+        await arModel.setAttribute('position', `${position.x} ${position.y} ${val}`);
+      };
+
+      positionZSlider.addEventListener('input', (e) => updatePositionZ(e.target.value));
+      positionZInput.addEventListener('input', (e) => updatePositionZ(e.target.value));
+
+      resetButton.addEventListener('click', async () => {
+        const currentModel = selector.value;
+        await updateScale(0.5);
+        rotationXSlider.value = -90;
+        rotationYSlider.value = 0;
+        rotationXInput.value = -90;
+        rotationYInput.value = 0;
+        positionZSlider.value = 0;
+        positionZInput.value = 0;
+        await arModel.setAttribute('gltf-model', currentModel);
+        await arModel.setAttribute('rotation', "-90 180 0");
+        await arModel.setAttribute('position', "0 0 0");
+      });
+    </script>
+  </body>
+</html>
