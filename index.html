@@ -26,12 +26,14 @@
       .menu-panel {
         display: none;
         flex-direction: column;
+        resize: both;
+        overflow: auto;
         position: fixed;
         top: 60px;
         left: 10px;
-        width: 260px;
+        width: 280px;
         z-index: 1000;
-        background: rgba(255, 255, 255, 0.95);
+        background: rgba(255, 255, 255, 0.8);
         padding: 15px;
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -51,7 +53,6 @@
         flex-direction: column;
       }
       .menu-panel input[type="range"],
-      .menu-panel input[type="number"],
       .menu-panel select {
         margin-top: 4px;
         height: 28px;
@@ -103,19 +104,18 @@
       </label>
       <label>Масштаб:
         <input type="range" id="scaleSlider" min="0.1" max="5" step="0.1" value="0.5">
-        <input type="number" id="scaleInput" min="0.1" max="5" step="0.1" value="0.5">
       </label>
       <label>Поворот X:
         <input type="range" id="rotationXSlider" min="-180" max="180" step="5" value="-90">
-        <input type="number" id="rotationXInput" min="-180" max="180" step="5" value="-90">
       </label>
       <label>Поворот Y:
         <input type="range" id="rotationYSlider" min="0" max="360" step="5" value="180">
-        <input type="number" id="rotationYInput" min="0" max="360" step="5" value="180">
       </label>
       <label>Позиция Z:
         <input type="range" id="positionZSlider" min="-5" max="5" step="0.1" value="0">
-        <input type="number" id="positionZInput" min="-5" max="5" step="0.1" value="0">
+      </label>
+      <label>Прозрачность меню:
+        <input type="range" id="opacitySlider" min="0.2" max="1" step="0.05" value="0.8">
       </label>
       <button id="resetButton">&#x21bb; Сброс</button>
     </div>
@@ -139,66 +139,60 @@
 
     <script>
       const $ = (id) => document.getElementById(id);
+      const menuPanel = $('menuPanel');
       const arModel = $('arModel');
-
       const selector = $('modelSelector');
       const scaleSlider = $('scaleSlider');
-      const scaleInput = $('scaleInput');
       const rotationXSlider = $('rotationXSlider');
       const rotationYSlider = $('rotationYSlider');
-      const rotationXInput = $('rotationXInput');
-      const rotationYInput = $('rotationYInput');
       const positionZSlider = $('positionZSlider');
-      const positionZInput = $('positionZInput');
+      const opacitySlider = $('opacitySlider');
       const resetButton = $('resetButton');
 
       function toggleMenu() {
-        $('menuPanel').classList.toggle('active');
+        menuPanel.classList.toggle('active');
       }
 
       selector.addEventListener('change', (e) => {
         arModel.setAttribute('gltf-model', e.target.value);
       });
 
-      function syncScale(val) {
-        scaleSlider.value = val;
-        scaleInput.value = val;
+      scaleSlider.addEventListener('input', (e) => {
+        const val = e.target.value;
         arModel.setAttribute('scale', `${val} ${val} ${val}`);
-      }
+      });
 
-      scaleSlider.addEventListener('input', (e) => syncScale(e.target.value));
-      scaleInput.addEventListener('input', (e) => syncScale(e.target.value));
-
-      function syncRotation() {
+      function updateRotation() {
         const x = rotationXSlider.value;
         const y = rotationYSlider.value;
-        rotationXInput.value = x;
-        rotationYInput.value = y;
         arModel.setAttribute('rotation', `${x} ${y} 0`);
       }
+      rotationXSlider.addEventListener('input', updateRotation);
+      rotationYSlider.addEventListener('input', updateRotation);
 
-      [rotationXSlider, rotationXInput].forEach(el => el.addEventListener('input', syncRotation));
-      [rotationYSlider, rotationYInput].forEach(el => el.addEventListener('input', syncRotation));
-
-      function syncPositionZ(val) {
-        positionZSlider.value = val;
-        positionZInput.value = val;
+      positionZSlider.addEventListener('input', (e) => {
+        const val = e.target.value;
         const pos = arModel.getAttribute('position');
         arModel.setAttribute('position', `${pos.x} ${pos.y} ${val}`);
-      }
+      });
 
-      positionZSlider.addEventListener('input', (e) => syncPositionZ(e.target.value));
-      positionZInput.addEventListener('input', (e) => syncPositionZ(e.target.value));
+      opacitySlider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        menuPanel.style.background = `rgba(255, 255, 255, ${val})`;
+      });
 
       resetButton.addEventListener('click', () => {
-        const model = selector.value;
-        syncScale(0.5);
-        rotationXSlider.value = rotationXInput.value = -90;
-        rotationYSlider.value = rotationYInput.value = 180;
-        positionZSlider.value = positionZInput.value = 0;
-        arModel.setAttribute('gltf-model', model);
-        arModel.setAttribute('rotation', `-90 180 0`);
-        arModel.setAttribute('position', `0 0 0`);
+        selector.value = 'model3.glb';
+        arModel.setAttribute('gltf-model', 'model3.glb');
+        scaleSlider.value = 0.5;
+        arModel.setAttribute('scale', '0.5 0.5 0.5');
+        rotationXSlider.value = -90;
+        rotationYSlider.value = 180;
+        arModel.setAttribute('rotation', '-90 180 0');
+        positionZSlider.value = 0;
+        arModel.setAttribute('position', '0 0 0');
+        opacitySlider.value = 0.8;
+        menuPanel.style.background = 'rgba(255, 255, 255, 0.8)';
       });
 
       window.addEventListener('load', () => {
@@ -212,27 +206,5 @@
           });
       });
     </script>
-  <div id="loadingDialog" style="display:flex;justify-content:center;align-items:center;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);color:white;z-index:2000;font-size:1.2em;flex-direction:column;">
-  <div>Загрузка модели: <span id="loadingProgress">0%</span></div>
-</div>
-
-<script>
-  const loadingDialog = document.getElementById('loadingDialog');
-  const loadingProgress = document.getElementById('loadingProgress');
-
-  const modelEl = document.querySelector('#arModel');
-
-  modelEl.addEventListener('model-progress', (evt) => {
-    const percent = Math.floor(evt.detail.loaded / evt.detail.total * 100);
-    loadingProgress.textContent = `${percent}%`;
-  });
-
-  modelEl.addEventListener('model-loaded', () => {
-    loadingProgress.textContent = '100%';
-    setTimeout(() => {
-      loadingDialog.style.display = 'none';
-    }, 500);
-  });
-</script>
-</body>
+  </body>
 </html>
