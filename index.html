@@ -81,7 +81,7 @@
       <button id="resetButton" title="Сбросить параметры">&#x21bb;</button>
     </div>
 
-    <a-scene embedded arjs>
+    <a-scene embedded arjs="sourceType: webcam;">
       <a-assets>
         <a-asset-item id="homerModel" src="homer.glb"></a-asset-item>
         <a-asset-item id="model2" src="model2.glb"></a-asset-item>
@@ -153,9 +153,9 @@
         const currentModel = selector.value;
         await updateScale(0.5);
         rotationXSlider.value = -90;
-        rotationYSlider.value = 0;
+        rotationYSlider.value = 180;
         rotationXInput.value = -90;
-        rotationYInput.value = 0;
+        rotationYInput.value = 180;
         positionZSlider.value = 0;
         positionZInput.value = 0;
         await arModel.setAttribute('gltf-model', currentModel);
