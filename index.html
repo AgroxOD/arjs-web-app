@@ -2,30 +2,7 @@
 <html>
   <head>
     <title>AR.js Web App - Optimized</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js">// Stabilization via smoothed pose tracking
-      const smoother = document.getElementById('smoother');
-      const marker = document.querySelector('a-marker');
-
-      marker.addEventListener('markerFound', () => {
-        smoother.object3D.visible = true;
-      });
-      marker.addEventListener('markerLost', () => {
-        smoother.object3D.visible = false;
-      });
-      
-      marker.addEventListener('markerFound', () => {
-        marker.addEventListener('componentchanged', (evt) => {
-          if (evt.detail.name === 'position' || evt.detail.name === 'rotation') {
-            const pos = marker.object3D.position;
-            const rot = marker.object3D.rotation;
-            smoother.object3D.position.lerp(pos, 0.2);
-            smoother.object3D.rotation.x += (rot.x - smoother.object3D.rotation.x) * 0.2;
-            smoother.object3D.rotation.y += (rot.y - smoother.object3D.rotation.y) * 0.2;
-            smoother.object3D.rotation.z += (rot.z - smoother.object3D.rotation.z) * 0.2;
-          }
-        });
-      });
-</script>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
     <style>
       body {
@@ -148,25 +125,28 @@
       <button onclick="location.reload()">Обновить страницу</button>
     </div>
 
+    <div id="loadingDialog" style="display:flex;justify-content:center;align-items:center;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);color:white;z-index:2000;font-size:1.2em;flex-direction:column;">
+      <div>Загрузка модели: <span id="loadingProgress">0%</span></div>
+    </div>
+
+    <div id="markerMessage" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);padding:20px;background:rgba(0,0,0,0.7);color:#fff;font-size:1.2em;border-radius:8px;z-index:2000;">
+      Наведите камеру на маркер для отображения модели
+    </div>
+
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;">
-      <a-marker $1 smooth="true" smoothCount="15" smoothTolerance="0.01" smoothThreshold="5" emitevents="true">
-        <a-entity id="arModel"
-                  gltf-model="model3.glb"
-                  scale="0.5 0.5 0.5"
-                  position="0 0 0"
-                  rotation="-90 0 0">
+      <a-marker preset="hiro" smooth="true" smoothCount="15" smoothTolerance="0.01" smoothThreshold="5" emitevents="true">
+        <a-entity id="smoother" position="0 0 0" rotation="-90 180 0">
+          <a-entity id="smoothed-model" gltf-model="model3.glb" scale="0.5 0.5 0.5" position="0 0 0"></a-entity>
         </a-entity>
       </a-marker>
       <a-entity camera></a-entity>
-        <a-entity id="smoother" position="0 0 0" rotation="0 0 0">
-      <a-entity id="smoothed-model" gltf-model="model3.glb" scale="0.5 0.5 0.5"></a-entity>
-    </a-entity>
-  </a-scene>
+    </a-scene>
 
     <script>
       const $ = (id) => document.getElementById(id);
       const menuPanel = $('menuPanel');
-      const arModel = document.getElementById('smoothed-model');
+      const arModel = $('smoothed-model');
+      const smoother = $('smoother');
       const selector = $('modelSelector');
       const scaleSlider = $('scaleSlider');
       const rotationXSlider = $('rotationXSlider');
@@ -174,6 +154,10 @@
       const positionZSlider = $('positionZSlider');
       const opacitySlider = $('opacitySlider');
       const resetButton = $('resetButton');
+      const loadingDialog = $('loadingDialog');
+      const loadingProgress = $('loadingProgress');
+      const markerMessage = $('markerMessage');
+      const marker = document.querySelector('a-marker');
 
       function toggleMenu() {
         menuPanel.classList.toggle('active');
@@ -181,6 +165,10 @@
 
       selector.addEventListener('change', (e) => {
         arModel.setAttribute('gltf-model', e.target.value);
+        scaleSlider.value = 0.5;
+        arModel.setAttribute('scale', '0.5 0.5 0.5');
+        positionZSlider.value = 0;
+        arModel.object3D.position.z = 0;
       });
 
       scaleSlider.addEventListener('input', (e) => {
@@ -191,15 +179,15 @@
       function updateRotation() {
         const x = rotationXSlider.value;
         const y = rotationYSlider.value;
-        arModel.setAttribute('rotation', `${x} ${y} 0`);
+        smoother.setAttribute('rotation', `${x} ${y} 0`);
       }
+
       rotationXSlider.addEventListener('input', updateRotation);
       rotationYSlider.addEventListener('input', updateRotation);
 
       positionZSlider.addEventListener('input', (e) => {
-        const val = e.target.value;
-        const pos = arModel.getAttribute('position');
-        arModel.setAttribute('position', `${pos.x} ${pos.y} ${val}`);
+        const z = parseFloat(e.target.value);
+        arModel.object3D.position.z = z;
       });
 
       opacitySlider.addEventListener('input', (e) => {
@@ -214,9 +202,9 @@
         arModel.setAttribute('scale', '0.5 0.5 0.5');
         rotationXSlider.value = -90;
         rotationYSlider.value = 180;
-        arModel.setAttribute('rotation', '-90 180 0');
+        smoother.setAttribute('rotation', '-90 180 0');
         positionZSlider.value = 0;
-        arModel.setAttribute('position', '0 0 0');
+        arModel.object3D.position.z = 0;
         opacitySlider.value = 0.8;
         menuPanel.style.background = 'rgba(255, 255, 255, 0.8)';
       });
@@ -231,28 +219,28 @@
             $('cameraWarning').style.display = 'block';
           });
       });
+
+      arModel.addEventListener('model-progress', (evt) => {
+        if (!evt.detail.total) return;
+        const percent = Math.floor((evt.detail.loaded / evt.detail.total) * 100);
+        loadingProgress.textContent = `${percent}%`;
+      });
+
+      arModel.addEventListener('model-loaded', () => {
+        loadingProgress.textContent = '100%';
+        setTimeout(() => {
+          loadingDialog.style.display = 'none';
+        }, 300);
+      });
+
+      // Marker found/lost messages
+      marker.addEventListener('markerFound', () => {
+        markerMessage.style.display = 'none';
+      });
+
+      marker.addEventListener('markerLost', () => {
+        markerMessage.style.display = 'block';
+      });
     </script>
-  <div id="loadingDialog" style="display:flex;justify-content:center;align-items:center;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);color:white;z-index:2000;font-size:1.2em;flex-direction:column;">
-  <div>Загрузка модели: <span id="loadingProgress">0%</span></div>
-</div>
-
-<script>
-  const loadingDialog = document.getElementById('loadingDialog');
-  const loadingProgress = document.getElementById('loadingProgress');
-  const modelEl = document.querySelector('#arModel');
-
-  modelEl.addEventListener('model-progress', (evt) => {
-    if (!evt.detail.total) return;
-    const percent = Math.floor((evt.detail.loaded / evt.detail.total) * 100);
-    loadingProgress.textContent = `${percent}%`;
-  });
-
-  modelEl.addEventListener('model-loaded', () => {
-    loadingProgress.textContent = '100%';
-    setTimeout(() => {
-      loadingDialog.style.display = 'none';
-    }, 300);
-  });
-</script>
-</body>
+  </body>
 </html>
